@@ -1,1 +1,4 @@
-my telegram bot va boshqalar bot telegram uchun
+python-telegram-bot
+python-dotenv
+aiogram
+requests
