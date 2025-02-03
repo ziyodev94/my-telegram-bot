@@ -1,22 +1,13 @@
-import os
-import logging
-from flask import Flask, request
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 
-TOKEN = os.getenv("7931935861:AAFtUmRlO0xakUJsu1qkjRzQJYgDErVhRp4")
-
-# Flask serverni yaratish
-app = Flask(__name__)
-
-# Telegram bot ilovasi
-application = Application.builder().token(TOKEN).build()
+TOKEN = "7931935861:AAFtUmRlO0xakUJsu1qkjRzQJYgDErVhRp4"
 
 # /start komandasi uchun
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🤖 Bot ishga tushdi! /start buyrug'i qabul qilindi.")
 
-# Bot admin qilinganda ishlaydigan funksiya
+# Bot admin qilinganda ishlaydigan funktsiya
 async def admin_promoted(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_title = update.effective_chat.title
     await update.message.reply_text(
@@ -24,38 +15,37 @@ async def admin_promoted(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🏷 Guruh nomi: {chat_title}\n"
         f"🆔 Guruh ID: {update.effective_chat.id}"
     )
+    print(f"[LOGGING] Bot {chat_title} guruhida admin qilindi!")
 
-# Xabarlarni o‘chirib tashlash
+# Xabarlarni o'chirganda log qilish
 async def delete_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
+    
+    # Faqat reply xabarlarni o'chiramiz
     if message.reply_to_message:
         try:
             await message.delete()
+            # Log qismi
+            print(
+                f"[DELETED] Xabar o'chirildi!\n"
+                f"User: @{message.from_user.username}\n"
+                f"Guruh: {message.chat.title}\n"
+                f"Xabar ID: {message.message_id}\n"
+                "--------------------------"
+            )
         except Exception as e:
-            print(f"[ERROR] Xabar o‘chirilmadi: {e}")
+            print(f"[ERROR] Xabar o'chirilmadi: {e}")
 
-# Webhook endpoint
-@app.route(f"/{TOKEN}", methods=["POST"])
-def webhook():
-    update = Update.de_json(request.get_json(), application.bot)
-    application.process_update(update)
-    return "OK", 200
+def main():
+    app = Application.builder().token(TOKEN).build()
+    
+    # Handlerlar
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, admin_promoted))
+    app.add_handler(MessageHandler(filters.REPLY, delete_messages))
+    
+    print("Bot ishga tushdi... Konsolni kuzating!")
+    app.run_polling()
 
-# Webhookni sozlash
-def set_webhook():
-    webhook_url = f"https://my-telegram-bot-uluh.onrender.com/{TOKEN}"  # URLingizni o‘rnating
-    application.bot.setWebhook(webhook_url)
-
-# Flask ilovasini ishga tushirish
 if __name__ == "__main__":
-    # Handlerlarni qo‘shish
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, admin_promoted))
-    application.add_handler(MessageHandler(filters.REPLY, delete_messages))
-
-    # Webhookni o‘rnatish
-    set_webhook()
-
-    # Flask serverni ishga tushirish
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    main()
