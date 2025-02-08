@@ -1,7 +1,6 @@
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
-
-TOKEN = "7931935861:AAFtUmRlO0xakUJsu1qkjRzQJYgDErVhRp4"
+from config import BOT_TOKEN  # Tokenni config.py orqali olamiz
 
 # /start komandasi uchun
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -17,7 +16,7 @@ async def admin_promoted(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     print(f"[LOGGING] Bot {chat_title} guruhida admin qilindi!")
 
-# Xabarlarni o'chirganda log qilish
+# Xabarlarni o‘chirganda log qilish
 async def delete_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
     
@@ -34,10 +33,10 @@ async def delete_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "--------------------------"
             )
         except Exception as e:
-            print(f"[ERROR] Xabar o'chirilmadi: {e}")
+            print(f"[ERROR] Xabar o‘chirilmadi: {e}")
 
 def main():
-    app = Application.builder().token(TOKEN).build()
+    app = Application.builder().token(BOT_TOKEN).build()  # Token config.py dan olinadi
     
     # Handlerlar
     app.add_handler(CommandHandler("start", start))
@@ -49,3 +48,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
