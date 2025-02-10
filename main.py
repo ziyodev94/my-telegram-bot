@@ -1,96 +1,78 @@
-from telegram import Update, ChatMember
+from telegram import Update, ChatMember, ChatPermissions
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
-from config import BOT_TOKEN  # Token config.py dan olinadi
+from config import BOT_TOKEN  # Token config.py orqali olinadi
 
-# ❌ Oddiy foydalanuvchilar / bilan boshlanuvchi barcha buyruqlarni avtomatik o‘chirish
-async def delete_user_commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """ Agar oddiy foydalanuvchi /buyruq bossa, xabarni o‘chiradi """
-    message = update.message
+# /start komandasi uchun
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("🤖 Bot ishga tushdi! /start buyrug'i qabul qilindi.")
 
-    if not message:
-        return
+# Buyruqlarni faqat adminlar ko‘ra oladigan qilish
+async def hidden_commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat = update.effective_chat
+    user = update.effective_user
     
-    user_id = message.from_user.id
-    chat = update.effective_chat
-    chat_member = await chat.get_member(user_id)
+    member = await chat.get_member(user.id)
+    
+    if member.status not in [ChatMember.ADMINISTRATOR, ChatMember.OWNER]:
+        try:
+            await update.message.delete()
+            print(f"[HIDDEN COMMAND] {user.username} ({user.id}) bot buyruqlarini yubordi, lekin o‘chirildi.")
+        except Exception as e:
+            print(f"[ERROR] Buyruqni o‘chirishda xatolik: {e}")
 
-    if chat_member.status not in [ChatMember.ADMINISTRATOR, ChatMember.OWNER]:
-        if message.text and message.text.startswith("/"):
-            await message.delete()
-            print(f"[DELETED] Foydalanuvchi {message.from_user.username} buyruq bosdi va o‘chirildi: {message.text}")
-            return
+# Bot admin qilinganda ishlaydigan funksiya
+async def admin_promoted(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_title = update.effective_chat.title
+    await update.message.reply_text(
+        f"✅ Bot ushbu guruhda admin qilindi!\n"
+        f"🏷 Guruh nomi: {chat_title}\n"
+        f"🆔 Guruh ID: {update.effective_chat.id}"
+    )
+    print(f"[LOGGING] Bot {chat_title} guruhida admin qilindi!")
 
-# ❌ @Majbur_bot reklama xabarlarini va spamni o‘chirish
-DELETE_MESSAGES = [
-    "📣KANAL va 👥GURUHGA  - ISTAGANCHA ODAM YIG'ISHDA YORDAM BERADIGAN BOT !",
-    "👥GURUHGA ISTAGANCHA ODAM YIGISH",
-    "1) 📣 KANALGA ODAM YIGʻISH - Man guruhingizdagi a'zolarni kanalga a'zo bo'lmaguncha yozdirmayman ❗️",
-    "2) 👥 GURUHGA ODAM YIGʻISH - Man guruhingizdagi odamlar guruhga odam qoʻshishmasa yozdirmayman ❗️",
-    "3) 📊 GURUH A'ZOLARINI SANAYDI - guruhga kim qancha odam qoʻshgan va eng kop odam qoʻshganlarni aniqlayman❗️",
-    "👉 /help   -  🔖 TEKSLI QO'LLANMA",
-    "👨🏻‍✈️ Bot ushbu vazifalarni bajarish uchun guruhingizda toʻliq ADMIN bulishi shart !"
-]
-
-TARGET_BOT_USERNAME = "Majbur_bot"
-
-async def delete_majburbot_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """ Agar @Majbur_bot dan reklama yoki spam kelib qolsa, o‘chiradi """
+# @Majbur_bot yuborgan spam, rasm, video, URL o‘chirish
+async def delete_spam(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
 
-    if message.from_user and message.from_user.username == TARGET_BOT_USERNAME:
-        for msg in DELETE_MESSAGES:
-            if msg in message.text:
-                await message.delete()
-                print(f"[DELETED] @Majbur_bot reklama xabari o‘chirildi: {message.message_id}")
-                return
-        
-        if message.entities or message.photo or message.video:
+    if message.forward_from and message.forward_from.username == "Majbur_bot":
+        try:
             await message.delete()
-            print(f"[DELETED] @Majbur_bot media yoki link xabari o‘chirildi: {message.message_id}")
-            return
+            print(f"[SPAM DELETED] @{message.from_user.username} tomonidan yuborilgan reklama o‘chirildi.")
+        except Exception as e:
+            print(f"[ERROR] Spamni o‘chirishda muammo: {e}")
 
-# ❌ Guruhdagi kanal nomidan kelgan xabarlarga reply qilingan xabarlarni o‘chirish
-async def delete_replies_to_channel_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """ Agar kimdir kanal nomidan kelgan xabarga reply bersa, reply qilingan xabar o‘chiriladi """
+    elif message.photo or message.video or message.text and any(url in message.text for url in ["http", "www"]):
+        try:
+            await message.delete()
+            print(f"[MEDIA/URL DELETED] @{message.from_user.username} tomonidan yuborilgan media yoki URL o‘chirildi.")
+        except Exception as e:
+            print(f"[ERROR] Media yoki URL o‘chirishda muammo: {e}")
+
+# "Siz guruhga odam qo‘shishingiz kerak" xabarlarini saqlash
+async def protect_important_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
+    if "guruhga odam qo‘shishligiz kerak" in message.text and message.forward_from and message.forward_from.username == "Majbur_bot":
+        print(f"[INFO] {message.from_user.username} botdan majburiy qo‘shish haqida xabar oldi, o‘chirilmadi.")
+        return  # Xabarni saqlab qolamiz
 
-    if message and message.reply_to_message:
-        replied_message = message.reply_to_message
+    try:
+        await message.delete()
+        print(f"[MESSAGE DELETED] @{message.from_user.username} tomonidan yuborilgan xabar o‘chirildi.")
+    except Exception as e:
+        print(f"[ERROR] Oddiy foydalanuvchi xabarini o‘chirishda muammo: {e}")
 
-        if replied_message.sender_chat and replied_message.sender_chat.type == "channel":
-            await message.delete()
-            print(f"[DELETED] Kanal nomidan kelgan xabarga reply qilgan xabar o‘chirildi: {message.message_id}")
-            return
-
-# 🔒 Bot buyruqlari faqat adminlarga ko‘rinishi uchun
-async def set_admin_commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """ Botning buyruqlari faqat adminlarga ko‘rinadigan bo‘ladi """
-    chat = update.effective_chat
-    bot = context.bot
-    commands = [
-        ("start", "Botni ishga tushirish"),
-        ("help", "Yordam"),
-        ("settings", "Sozlamalar"),
-    ]
-
-    await bot.set_my_commands(commands, scope={"type": "chat_administrators", "chat_id": chat.id})
-    print(f"[UPDATED] Buyruqlar faqat adminlarga ko‘rinadigan qilindi!")
-
-# 🔄 Botni ishga tushirish
 def main():
-    app = Application.builder().token(BOT_TOKEN).build()
-
-    app.add_handler(CommandHandler("start", set_admin_commands))
-    app.add_handler(MessageHandler(filters.ALL, delete_user_commands))
-    app.add_handler(MessageHandler(filters.ALL, delete_majburbot_messages))
-    app.add_handler(MessageHandler(filters.ALL, delete_replies_to_channel_messages))
+    app = Application.builder().token(BOT_TOKEN).build()  # Token config.py dan olinadi
+    
+    # Handlerlar
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, admin_promoted))
+    app.add_handler(MessageHandler(filters.COMMAND, hidden_commands))  # Buyruqlarni yashirish
+    app.add_handler(MessageHandler(filters.ALL, delete_spam))  # Spam va media xabarlarni o‘chirish
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, protect_important_messages))  # Muhim xabarlarni saqlash
 
     print("Bot ishga tushdi... Konsolni kuzating!")
     app.run_polling()
 
 if __name__ == "__main__":
     main()
-
-
-
-
