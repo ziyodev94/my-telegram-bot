@@ -4,7 +4,7 @@ from config import BOT_TOKEN  # Tokenni config.py orqali olamiz
 
 # /start komandasi uchun
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🤖 Bot ishga tushdi! /start buyrug'i qabul qilindi.")
+    await update.message.reply_text("🤖 Bot ishga tushdi janob! /start buyrug'i qabul qilindi.")
 
 # Bot admin qilinganda ishlaydigan funktsiya
 async def admin_promoted(update: Update, context: ContextTypes.DEFAULT_TYPE):
