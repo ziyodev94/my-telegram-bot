@@ -1,23 +1,26 @@
-from telegram import Update, MessageEntity
+from telegram import Update, ChatMember
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 from config import BOT_TOKEN  # Token config.py dan olinadi
 
-# Foydalanuvchilar yozgan va guruhda chiqib qoladigan buyruqlarni o‘chirish uchun so‘zlar
-DELETE_KEYWORDS = [
-    "/start@Majbur_bot",
-    "/guruh",
-    "/guruh_off",
-    "/kanal",
-    "/kanal_off",
-    "/bal",
-    "/meni",
-    "/sizni",
-    "/top",
-    "/nol",
-    "/del"
-]
+# ❌ Oddiy foydalanuvchilar / bilan boshlanuvchi barcha buyruqlarni avtomatik o‘chirish
+async def delete_user_commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """ Agar oddiy foydalanuvchi /buyruq bossa, xabarni o‘chiradi """
+    message = update.message
 
-# @Majbur_bot dan keladigan aniq reklama xabarlari
+    if not message:
+        return
+    
+    user_id = message.from_user.id
+    chat = update.effective_chat
+    chat_member = await chat.get_member(user_id)
+
+    if chat_member.status not in [ChatMember.ADMINISTRATOR, ChatMember.OWNER]:
+        if message.text and message.text.startswith("/"):
+            await message.delete()
+            print(f"[DELETED] Foydalanuvchi {message.from_user.username} buyruq bosdi va o‘chirildi: {message.text}")
+            return
+
+# ❌ @Majbur_bot reklama xabarlarini va spamni o‘chirish
 DELETE_MESSAGES = [
     "📣KANAL va 👥GURUHGA  - ISTAGANCHA ODAM YIG'ISHDA YORDAM BERADIGAN BOT !",
     "👥GURUHGA ISTAGANCHA ODAM YIGISH",
@@ -28,55 +31,62 @@ DELETE_MESSAGES = [
     "👨🏻‍✈️ Bot ushbu vazifalarni bajarish uchun guruhingizda toʻliq ADMIN bulishi shart !"
 ]
 
-# @Majbur_bot tomonidan yuborilgan xabarlarni aniqlash uchun bot username'i
 TARGET_BOT_USERNAME = "Majbur_bot"
 
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """ /start komandasi """
-    await update.message.reply_text("🤖 Bot ishga tushdi janob! /start buyrug'i qabul qilindi.")
-
-
-async def delete_unwanted_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """ Foydalanuvchilar botga tegishli buyruqlarni yoki Majbur_bot reklama xabarlarini yozsa, ularni o‘chiradi. """
+async def delete_majburbot_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """ Agar @Majbur_bot dan reklama yoki spam kelib qolsa, o‘chiradi """
     message = update.message
 
-    # 1. Agar foydalanuvchi DELETE_KEYWORDS ro‘yxatidagi so‘zlardan birini yozsa, o‘chiramiz
-    if message.text and any(keyword in message.text for keyword in DELETE_KEYWORDS):
-        await message.delete()
-        print(f"[DELETED] Foydalanuvchi yozgan botga tegishli buyruq o‘chirildi: {message.text}")
-        return
-
-    # 2. Agar xabar @Majbur_bot tomonidan yuborilgan bo‘lsa
     if message.from_user and message.from_user.username == TARGET_BOT_USERNAME:
-        # Majbur_bot dan kelgan aniq reklama matnlarini o‘chirib tashlash
         for msg in DELETE_MESSAGES:
             if msg in message.text:
                 await message.delete()
                 print(f"[DELETED] @Majbur_bot reklama xabari o‘chirildi: {message.message_id}")
                 return
-
-        # 3. Agar xabarda URL, rasm, video bo‘lsa, uni ham o‘chirib tashlash
-        if (
-            message.entities
-            and any(entity.type in ["url", "text_link"] for entity in message.entities)
-        ) or message.photo or message.video:
+        
+        if message.entities or message.photo or message.video:
             await message.delete()
-            print(f"[DELETED] @Majbur_bot tomonidan yuborilgan media yoki URL xabari o‘chirildi: {message.message_id}")
+            print(f"[DELETED] @Majbur_bot media yoki link xabari o‘chirildi: {message.message_id}")
             return
 
+# ❌ Guruhdagi kanal nomidan kelgan xabarlarga reply qilingan xabarlarni o‘chirish
+async def delete_replies_to_channel_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """ Agar kimdir kanal nomidan kelgan xabarga reply bersa, reply qilingan xabar o‘chiriladi """
+    message = update.message
 
+    if message and message.reply_to_message:
+        replied_message = message.reply_to_message
+
+        if replied_message.sender_chat and replied_message.sender_chat.type == "channel":
+            await message.delete()
+            print(f"[DELETED] Kanal nomidan kelgan xabarga reply qilgan xabar o‘chirildi: {message.message_id}")
+            return
+
+# 🔒 Bot buyruqlari faqat adminlarga ko‘rinishi uchun
+async def set_admin_commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """ Botning buyruqlari faqat adminlarga ko‘rinadigan bo‘ladi """
+    chat = update.effective_chat
+    bot = context.bot
+    commands = [
+        ("start", "Botni ishga tushirish"),
+        ("help", "Yordam"),
+        ("settings", "Sozlamalar"),
+    ]
+
+    await bot.set_my_commands(commands, scope={"type": "chat_administrators", "chat_id": chat.id})
+    print(f"[UPDATED] Buyruqlar faqat adminlarga ko‘rinadigan qilindi!")
+
+# 🔄 Botni ishga tushirish
 def main():
-    """ Botni ishga tushirish """
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # Handlerlar
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.ALL, delete_unwanted_messages))
+    app.add_handler(CommandHandler("start", set_admin_commands))
+    app.add_handler(MessageHandler(filters.ALL, delete_user_commands))
+    app.add_handler(MessageHandler(filters.ALL, delete_majburbot_messages))
+    app.add_handler(MessageHandler(filters.ALL, delete_replies_to_channel_messages))
 
     print("Bot ishga tushdi... Konsolni kuzating!")
     app.run_polling()
-
 
 if __name__ == "__main__":
     main()
