@@ -3,8 +3,8 @@ from telegram.ext import Application, CommandHandler, MessageHandler, ContextTyp
 from config import BOT_TOKEN  # Tokenni config.py orqali olamiz
 import asyncio
 
-BOT_OWNER_ID = 123456789  # <<< BU YERGA BOT EGASINING TELEGRAM ID sini qo‘ying
-FORWARD_GROUP_ID = -2440778887  # <<< BU YERGA POSTLAR FORWARD BO‘LADIGAN GURUH ID sini qo‘ying
+BOT_OWNER_ID = 7276556333  # <<< BU YERGA BOT EGASINING TELEGRAM ID sini qo‘ying
+FORWARD_GROUP_ID = -1002440778887  # <<< BU YERGA POSTLAR FORWARD BO‘LADIGAN GURUH ID sini qo‘ying
 
 # /start komandasi uchun
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -56,13 +56,22 @@ async def delete_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             print(f"[ERROR] Xabar o‘chirilmadi: {e}")
 
-# Kanalga joylangan postlarni guruhga forward qilish
+# Kanalga joylangan postlarni guruhga forward qilish va bot egasiga xabar yuborish
 async def forward_channel_posts(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.channel_post  # Kanal postini olish
     if message:
         try:
             await asyncio.sleep(60)  # 1 daqiqa kutish
             await context.bot.forward_message(chat_id=FORWARD_GROUP_ID, from_chat_id=message.chat_id, message_id=message.message_id)
+            
+            # Bot egasiga forward qilingan post haqida xabar yuborish
+            log_message = (
+                f"📢 Kanal post forward qilindi!\n"
+                f"🏷 Kanal: {message.chat.title}\n"
+                f"📌 Xabar ID: {message.message_id}"
+            )
+            await context.bot.send_message(chat_id=BOT_OWNER_ID, text=log_message)
+            
             print(f"[FORWARDED] Kanal posti guruhga yuborildi: {message.message_id}")
         except Exception as e:
             print(f"[ERROR] Post forward qilinmadi: {e}")
