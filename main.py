@@ -3,7 +3,8 @@ from telegram.ext import Application, CommandHandler, MessageHandler, ContextTyp
 from config import BOT_TOKEN  # Tokenni config.py orqali olamiz
 import asyncio
 
-BOT_OWNER_ID = 7276556333  # <<< BU YERGA BOT EGASINING TELEGRAM ID sini qo‘ying
+BOT_OWNER_ID = 123456789  # <<< BU YERGA BOT EGASINING TELEGRAM ID sini qo‘ying
+FORWARD_GROUP_ID = -2440778887  # <<< BU YERGA POSTLAR FORWARD BO‘LADIGAN GURUH ID sini qo‘ying
 
 # /start komandasi uchun
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -55,6 +56,17 @@ async def delete_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             print(f"[ERROR] Xabar o‘chirilmadi: {e}")
 
+# Kanalga joylangan postlarni guruhga forward qilish
+async def forward_channel_posts(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message = update.channel_post  # Kanal postini olish
+    if message:
+        try:
+            await asyncio.sleep(60)  # 1 daqiqa kutish
+            await context.bot.forward_message(chat_id=FORWARD_GROUP_ID, from_chat_id=message.chat_id, message_id=message.message_id)
+            print(f"[FORWARDED] Kanal posti guruhga yuborildi: {message.message_id}")
+        except Exception as e:
+            print(f"[ERROR] Post forward qilinmadi: {e}")
+
 def main():
     app = Application.builder().token(BOT_TOKEN).build()  # Token config.py dan olinadi
     
@@ -62,6 +74,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, admin_promoted))
     app.add_handler(MessageHandler(filters.ALL, delete_messages))  # Faqat reply qilingan xabarlarni o‘chirish shart bilan ishlaydi
+    app.add_handler(MessageHandler(filters.ChatType.CHANNEL, forward_channel_posts))  # Kanaldan post forward qilish
     
     print("Bot ishga tushdi... Konsolni kuzating!")
     app.run_polling()
