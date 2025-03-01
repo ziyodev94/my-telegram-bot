@@ -8,7 +8,7 @@ FORWARD_GROUP_ID = -1002440778887  # <<< BU YERGA POSTLAR FORWARD BO‘LADIGAN G
 
 # /start komandasi uchun
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🤖 Bot ishga tushdi akajonim! /start buyrug'i qabul qilindi.")
+    await update.message.reply_text("🤖 🤖🤖Bot ishga tushdi akajonim! /start buyrug'i qabul qilindi.")
 
 # Bot admin qilinganda ishlaydigan funktsiya (faqat bot egasiga xabar yuboradi)
 async def admin_promoted(update: Update, context: ContextTypes.DEFAULT_TYPE):
