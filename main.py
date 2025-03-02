@@ -58,8 +58,8 @@ async def delete_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Kanalga joylangan postlarni guruhga forward qilish va bot egasiga xabar yuborish
 async def forward_channel_posts(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message = update.channel_post  # Kanal postini olish
-    if message:
+    message = update.effective_message  # Kanal postini olish
+    if message and message.chat.type == "channel":
         try:
             await asyncio.sleep(60)  # 1 daqiqa kutish
             await context.bot.forward_message(chat_id=FORWARD_GROUP_ID, from_chat_id=message.chat_id, message_id=message.message_id)
@@ -83,7 +83,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, admin_promoted))
     app.add_handler(MessageHandler(filters.ALL, delete_messages))  # Faqat reply qilingan xabarlarni o‘chirish shart bilan ishlaydi
-    app.add_handler(MessageHandler(filters.ChatType.CHANNEL, forward_channel_posts))  # Kanaldan post forward qilish
+    app.add_handler(MessageHandler(filters.ALL, forward_channel_posts))  # Kanaldan post forward qilish
     
     print("Bot ishga tushdi... Konsolni kuzating!")
     app.run_polling()
