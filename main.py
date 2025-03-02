@@ -4,7 +4,7 @@ from config import BOT_TOKEN
 import asyncio
 
 BOT_OWNER_ID = 7276556333
-FORWARD_GROUP_ID = -2440778887
+FORWARD_GROUP_ID = -1002440778887
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🤖 Bot ishga tushdi! /start buyrug'i qabul qilindi.")
