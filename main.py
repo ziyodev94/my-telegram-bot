@@ -3,11 +3,11 @@ from telegram.ext import Application, CommandHandler, MessageHandler, ContextTyp
 from config import BOT_TOKEN
 import asyncio
 
-BOT_OWNER_ID = 7276556333
-FORWARD_GROUP_ID = -1002440778887
+BOT_OWNER_ID = 6181955006
+FORWARD_GROUP_ID = -1002261484654
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🤖 Bot ishga tushdi! /start buyrug'i qabul qilindi.")
+    await update.message.reply_text("https://t.me/+-LiYwbb0YV8yZDQ6")
 
 async def admin_promoted(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_title = update.effective_chat.title
